@@ -10,29 +10,28 @@ REPO_URL="https://github.com/woshihoujinxin/quarkpan-skill.git"
 
 echo "=== QuarkPan Skill Installer ==="
 
-# Clone or update repo
-if [ -d "$REPO_DIR" ]; then
-    echo "Updating existing repo..."
-    cd "$REPO_DIR" && git pull
-else
-    echo "Cloning repo..."
-    git clone "$REPO_URL" "$REPO_DIR"
-fi
+# Clone repo
+echo "Cloning repo..."
+git clone "$REPO_URL" "$REPO_DIR"
 
-# Install package
+# Install package (non-editable, so source can be deleted after)
 echo "Installing quarkpan..."
 cd "$REPO_DIR"
-pip install -e .
+pip install .
 
 # Deploy skill file
 echo "Deploying skill..."
 mkdir -p "$SKILL_DIR"
 cp "$REPO_DIR/SKILL.md" "$SKILL_DIR/SKILL.md"
 
+# Clean up source code
+echo "Cleaning up source..."
+rm -rf "$REPO_DIR"
+
 echo ""
 echo "=== Install Complete ==="
 echo "Skill:    ~/.claude/skills/quarkpan/SKILL.md"
-echo "Repo:     $REPO_DIR"
+echo "Config:   ~/.quarkpan/config/  (cookies, login data)"
 echo "Commands: /quarkpan to activate"
 echo ""
-echo "First time? Run 'quarkpan auth login' to login."
+echo "First time? Run the login flow described in the skill."
