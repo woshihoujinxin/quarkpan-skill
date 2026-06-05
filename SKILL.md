@@ -15,16 +15,21 @@ metadata:
 
 ## Installation
 
-从维护的仓库安装（含 Windows 编码修复和 API 兼容性修复）：
+一键安装（克隆代码 + pip安装 + 部署skill）：
 
 ```bash
-# 克隆并安装
-git clone https://github.com/woshihoujinxin/quarkpan-skill.git
-cd quarkpan-skill
-pip install -e .
+bash <(curl -sL https://raw.githubusercontent.com/woshihoujinxin/quarkpan-skill/main/install.sh)
 ```
 
-如果是首次使用，需要先执行 `quarkpan auth login` 扫码登录。
+或手动安装：
+
+```bash
+git clone https://github.com/woshihoujinxin/quarkpan-skill.git ~/.quarkpan-skill
+cd ~/.quarkpan-skill && pip install -e .
+mkdir -p ~/.claude/skills/quarkpan && cp SKILL.md ~/.claude/skills/quarkpan/
+```
+
+首次使用需要扫码登录（见下方）。
 
 ### 扫码登录流程
 
