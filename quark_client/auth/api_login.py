@@ -471,40 +471,100 @@ class APILogin:
             self.logger.error(f"获取用户信息失败: {e}")
             raise
 
+    def generate_qr(self) -> str:
+        """
+        生成二维码图片并返回链接，不阻塞等待
+
+        Returns:
+            二维码URL
+        """
+        qr_token, qr_url = self.get_qr_code()
+
+        # 保存token供后续轮询使用
+        token_file = self.config_dir / "qr_token.json"
+        with open(token_file, 'w', encoding='utf-8') as f:
+            json.dump({'token': qr_token, 'url': qr_url, 'timestamp': int(time.time())}, f)
+
+        # 生成二维码图片并打开
+        try:
+            import qrcode
+            qr_img = qrcode.make(qr_url)
+            qr_path = self.config_dir / "qr_code.png"
+            qr_img.save(str(qr_path))
+            import webbrowser
+            webbrowser.open(str(qr_path))
+        except Exception as e:
+            self.logger.warning(f"生成二维码图片失败: {e}")
+
+        return qr_url
+
+    def poll_login(self) -> Optional[str]:
+        """
+        轮询登录状态（使用之前保存的token）
+
+        Returns:
+            登录成功返回Cookie字符串，未完成返回None
+        """
+        token_file = self.config_dir / "qr_token.json"
+        if not token_file.exists():
+            raise AuthenticationError("未找到登录token，请先执行 quarkpan auth qr")
+
+        with open(token_file, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+
+        qr_token = data['token']
+        created = data['timestamp']
+
+        # 检查是否超时（5分钟）
+        if time.time() - created > 300:
+            token_file.unlink(missing_ok=True)
+            raise AuthenticationError("二维码已过期，请重新执行 quarkpan auth qr")
+
+        result = self.check_login_status(qr_token)
+        if result is not None and self._is_login_success(result):
+            self._save_login_result(result)
+            token_file.unlink(missing_ok=True)
+
+            cookies = []
+            for cookie in self.client.cookies.jar:
+                if cookie.domain and 'quark.cn' in cookie.domain:
+                    cookies.append(f"{cookie.name}={cookie.value}")
+            return "; ".join(cookies)
+
+        return None
+
     def login(self) -> str:
         """
-        执行API登录流程
+        执行完整的API登录流程（阻塞式，用于非交互场景）
 
         Returns:
             Cookie字符串
         """
         try:
-            # 获取二维码
-            qr_token, qr_url = self.get_qr_code()
+            qr_url = self.generate_qr()
+            print(f"\n二维码链接: {qr_url}\n")
 
-            print("请使用夸克APP扫描二维码登录...")
-
-            # 显示二维码 - 直接从URL生成ASCII二维码
             try:
-                display_qr_from_url(qr_url)
-            except Exception as e:
-                self.logger.warning(f"显示ASCII二维码失败: {e}")
-                print(f"请在浏览器中打开: {qr_url}")
+                import webbrowser
+                webbrowser.open(qr_url)
+            except Exception:
+                pass
 
-            # 等待登录
+            # 阻塞等待
+            token_file = self.config_dir / "qr_token.json"
+            with open(token_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            qr_token = data['token']
+
             if self.wait_for_login(qr_token):
-                # 从client中提取cookies
                 cookies = []
                 for cookie in self.client.cookies.jar:
-                    # 只提取夸克相关的重要Cookie
                     if cookie.domain and 'quark.cn' in cookie.domain:
                         cookies.append(f"{cookie.name}={cookie.value}")
-
-                cookie_string = "; ".join(cookies)
-                self.logger.debug(f"提取到Cookie: {len(cookies)}个")
-
-                return cookie_string
+                token_file.unlink(missing_ok=True)
+                return "; ".join(cookies)
             else:
+                token_file.unlink(missing_ok=True)
                 raise AuthenticationError("登录超时或失败")
 
         except Exception as e:
