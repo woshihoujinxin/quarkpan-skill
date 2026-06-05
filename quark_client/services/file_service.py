@@ -47,11 +47,17 @@ class FileService:
             'pdir_fid': folder_id,
             '_page': page,
             '_size': size,
+            '_fetch_total': 1,
             '_sort': f"{sort_field}:{sort_order}"
         }
 
         try:
             response = self.client.get('file/sort', params=params)
+            # 将 metadata 中的 _total 同步到 data.total，保持接口兼容
+            if isinstance(response, dict) and 'data' in response:
+                meta_total = response.get('metadata', {}).get('_total')
+                if meta_total is not None and 'total' not in response['data']:
+                    response['data']['total'] = meta_total
             return response
         except APIError as e:
             if 'not found' in str(e).lower():

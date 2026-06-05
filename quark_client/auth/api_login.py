@@ -3,6 +3,7 @@
 """
 
 import json
+import os
 import sys
 import threading
 import time
@@ -10,6 +11,12 @@ import uuid
 from typing import Dict, Optional, Tuple
 
 import httpx
+
+if sys.platform == 'win32':
+    if hasattr(sys.stdout, 'reconfigure'):
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    if hasattr(sys.stderr, 'reconfigure'):
+        sys.stderr.reconfigure(encoding='utf-8', errors='replace')
 
 from ..config import get_config_dir
 from ..exceptions import AuthenticationError

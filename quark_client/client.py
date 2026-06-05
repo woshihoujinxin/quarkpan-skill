@@ -260,14 +260,25 @@ class QuarkClient:
 
     def get_storage_info(self) -> Dict[str, Any]:
         """
-        获取存储空间信息
+        获取存储空间信息（通过搜索接口统计文件数量）
 
         Returns:
             存储信息
         """
         try:
-            response = self.api_client.get('capacity')
-            return response
+            result = self.files.search_files('', page=1, size=1)
+            total_items = result.get('metadata', {}).get('_total', 0)
+
+            return {
+                'status': 200,
+                'data': {
+                    'used': 0,
+                    'total': 0,
+                    'total_items': total_items,
+                },
+                'metadata': {},
+                'note': 'capacity API 已废弃，仅可获取文件总数，无法获取存储容量',
+            }
         except Exception as e:
             return {'error': str(e)}
 

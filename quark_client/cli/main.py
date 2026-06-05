@@ -308,21 +308,25 @@ def status():
                     data = storage['data']
                     total = data.get('total', 0)
                     used = data.get('used', 0)
-                    free = total - used
+                    total_items = data.get('total_items', 0)
 
-                    # 创建存储信息表格
-                    table = Table(title="💾 存储空间信息")
+                    table = Table(title="💾 网盘信息")
                     table.add_column("项目", style="cyan")
-                    table.add_column("大小", style="green")
-                    table.add_column("百分比", style="yellow")
+                    table.add_column("值", style="green")
 
-                    usage_percent = (used / total * 100) if total > 0 else 0
-
-                    table.add_row("总容量", format_file_size(total), "100%")
-                    table.add_row("已使用", format_file_size(used), f"{usage_percent:.1f}%")
-                    table.add_row("剩余", format_file_size(free), f"{100-usage_percent:.1f}%")
+                    if total > 0 and used > 0:
+                        free = total - used
+                        usage_percent = (used / total * 100) if total > 0 else 0
+                        table.add_row("总容量", format_file_size(total))
+                        table.add_row("已使用", f"{format_file_size(used)} ({usage_percent:.1f}%)")
+                        table.add_row("剩余", format_file_size(free))
+                    else:
+                        table.add_row("全盘文件数", str(total_items) if total_items else "未知")
+                        rprint("[dim]注: 容量API已废弃，无法获取存储空间详情[/dim]")
 
                     console.print(table)
+                elif storage and 'error' in storage:
+                    rprint(f"[yellow]⚠️ 获取存储信息失败: {storage['error']}[/yellow]")
                 else:
                     rprint("[yellow]⚠️ 无法获取存储信息[/yellow]")
             except Exception as e:
