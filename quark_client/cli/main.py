@@ -366,10 +366,24 @@ def ls(
                 rprint("[red]❌ 未登录，请先使用 quarkpan auth login 登录[/red]")
                 raise typer.Exit(1)
 
+            # Resolve folder name/path to ID
+            resolved_id = folder_id
+            if folder_id != "0":
+                is_valid_id = len(folder_id) == 32 and all(c in '0123456789abcdef' for c in folder_id)
+                if not is_valid_id:
+                    try:
+                        from ..services.batch_share_service import BatchShareService
+                        batch_svc = BatchShareService(client.api_client)
+                        rid = batch_svc._resolve_path_to_folder_id(folder_id)
+                        if rid:
+                            resolved_id = rid
+                    except Exception:
+                        pass
+
             # 根据过滤选项选择API调用
             if folders_only or files_only:
                 files = client.list_files_with_details(
-                    folder_id=folder_id,
+                    folder_id=resolved_id,
                     page=page,
                     size=size,
                     sort_field=sort_field,
@@ -379,7 +393,7 @@ def ls(
                 )
             else:
                 files = client.list_files(
-                    folder_id=folder_id,
+                    folder_id=resolved_id,
                     page=page,
                     size=size,
                     sort_field=sort_field,
@@ -394,7 +408,7 @@ def ls(
             total = files['data'].get('total', 0)
 
             # 显示标题
-            folder_name = get_folder_name_by_id(client, folder_id)
+            folder_name = get_folder_name_by_id(client, resolved_id)
             rprint(f"\n📂 [bold]{folder_name}[/bold] (第{page}页，共{total}个项目)")
 
             if not file_list:
