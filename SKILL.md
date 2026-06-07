@@ -97,14 +97,14 @@ else:
 | 命令 | 用途 |
 |------|------|
 | `quarkpan ls` | 列出根目录文件 |
-| `quarkpan ls <folder_id>` | 列出指定文件夹 |
+| `quarkpan ls "文件夹名"` | 按名称/路径列出（如 `网盘拉新/子目录`） |
+| `quarkpan ls <folder_id>` | 按 ID 列出指定文件夹 |
+| `quarkpan ls --fid` | 显示文件/文件夹 ID（用于 rm、share 等需要 ID 的操作） |
 | `quarkpan ls --details` | 详细列表（含大小、时间） |
 | `quarkpan ls --page 2 --size 50` | 分页 |
 | `quarkpan ls --folders-only` | 只看文件夹 |
 | `quarkpan ls --files-only` | 只看文件 |
-| `quarkpan cd <folder_id>` | 进入文件夹 |
 | `quarkpan browse` | 交互式浏览 |
-| `quarkpan goto <target>` | 智能进入（名称/序号/ID） |
 | `quarkpan fileinfo <file_id>` | 文件详细信息 |
 
 ### 搜索
@@ -121,12 +121,12 @@ else:
 | 命令 | 用途 |
 |------|------|
 | `quarkpan mkdir "名称"` | 创建文件夹 |
-| `quarkpan mkdir "名称" --parent <id>` | 在指定目录创建 |
-| `quarkpan rm "路径或ID"` | 删除 |
-| `quarkpan rm --force "路径"` | 强制删除 |
+| `quarkpan mkdir "名称" --parent <id>` | 在指定目录创建（`--parent` 必须用 ID） |
+| `quarkpan rm "路径"` | 按路径删除 |
+| `quarkpan rm --id --force <fid1> <fid2>` | 按 ID 强制删除（ID 从 `ls --fid` 获取） |
 | `quarkpan rename "路径" "新名"` | 重命名 |
 | `quarkpan upload "文件路径"` | 上传到根目录 |
-| `quarkpan upload "文件" --parent <id>` | 上传到指定目录 |
+| `quarkpan upload "文件" --parent <id>` | 上传到指定目录（`--parent` 必须用 ID） |
 | `quarkpan move "路径" --to "目标"` | 移动文件 |
 
 ### 下载
@@ -142,7 +142,8 @@ else:
 
 | 命令 | 用途 |
 |------|------|
-| `quarkpan share "路径" --title "标题"` | 创建分享 |
+| `quarkpan share "<fid>" --use-id --title "标题"` | 用 ID 创建分享（推荐） |
+| `quarkpan share "路径" --title "标题"` | 用路径创建分享 |
 | `quarkpan share "路径" --password 1234` | 带密码分享 |
 | `quarkpan share "路径" --expire 7` | 7天有效期 |
 | `quarkpan shares` | 我的分享列表 |
