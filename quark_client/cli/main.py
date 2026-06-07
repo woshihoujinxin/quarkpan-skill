@@ -356,6 +356,7 @@ def ls(
     sort_field: str = typer.Option("file_name", "--sort", help="排序字段"),
     sort_order: str = typer.Option("asc", "--order", help="排序方向 (asc/desc)"),
     show_details: bool = typer.Option(False, "--details", "-d", help="显示详细信息"),
+    show_fid: bool = typer.Option(False, "--fid", help="显示文件ID"),
     folders_only: bool = typer.Option(False, "--folders-only", help="只显示文件夹"),
     files_only: bool = typer.Option(False, "--files-only", help="只显示文件")
 ):
@@ -420,12 +421,15 @@ def ls(
                 table = Table()
                 table.add_column("序号", style="dim")
                 table.add_column("类型", style="cyan")
+                if show_fid:
+                    table.add_column("FID", style="dim", max_width=12)
                 table.add_column("名称", style="white")
                 table.add_column("大小", style="green")
                 table.add_column("修改时间", style="yellow")
 
                 for i, file_info in enumerate(file_list, (page - 1) * size + 1):
                     name = file_info.get('file_name', '未知')
+                    fid = file_info.get('fid', '')
                     size_bytes = file_info.get('size', 0)
                     file_type = file_info.get('file_type', 0)
                     updated_at = file_info.get('updated_at', '')
@@ -434,17 +438,25 @@ def ls(
                     size_str = "-" if file_type == 0 else format_file_size(size_bytes)
                     time_str = format_timestamp(updated_at) if updated_at else "-"
 
-                    table.add_row(str(i), type_icon, name, size_str, time_str)
+                    row = [str(i), type_icon]
+                    if show_fid:
+                        row.append(fid[:12] + "…")
+                    row.extend([name, size_str, time_str])
+                    table.add_row(*row)
 
                 console.print(table)
             else:
                 # 简洁列表视图
                 for i, file_info in enumerate(file_list, (page - 1) * size + 1):
                     name = file_info.get('file_name', '未知')
+                    fid = file_info.get('fid', '')
                     file_type = file_info.get('file_type', 0)
                     type_icon = "📁" if file_type == 0 else "📄"
 
-                    rprint(f"  {i:2d}. {type_icon} {name}")
+                    if show_fid:
+                        rprint(f"  {i:2d}. {type_icon} {name} [dim]{fid}[/dim]")
+                    else:
+                        rprint(f"  {i:2d}. {type_icon} {name}")
 
             # 显示分页信息
             if total > size:
