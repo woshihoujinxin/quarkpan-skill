@@ -17,7 +17,7 @@ git clone "$REPO_URL" "$REPO_DIR"
 # Install package (non-editable, so source can be deleted after)
 echo "Installing quarkpan..."
 cd "$REPO_DIR"
-pip install .
+pip install . --quiet
 
 # Deploy skill file
 echo "Deploying skill..."
