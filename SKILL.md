@@ -15,6 +15,11 @@ metadata:
 
 ## Installation
 
+**仓库源选择规则**：
+- 用户说「用 Gitee / Gitee 安装 / 国内加速 / 国内镜像 / gitee」→ 走 Gitee 命令
+- 用户说「用 GitHub / GitHub 安装」→ 走 GitHub 命令
+- 用户未指定 → 默认 GitHub
+
 一键安装（克隆代码 + pip安装 + 部署skill）：
 
 ```bash
@@ -22,6 +27,12 @@ metadata:
 bash <(curl -sL https://raw.githubusercontent.com/woshihoujinxin/quarkpan-skill/main/install.sh)
 # Gitee
 bash <(curl -sL https://gitee.com/houjinxin/quarkpan-skill/raw/main/install.sh)
+```
+
+如需在 GitHub 安装脚本下强制走 Gitee 仓库（适合 Gitee 命令被 GFW 阻断时的兜底），可用 `QUARKPAN_REPO_URL` 覆盖：
+
+```bash
+QUARKPAN_REPO_URL=https://gitee.com/houjinxin/quarkpan-skill.git bash <(curl -sL https://raw.githubusercontent.com/woshihoujinxin/quarkpan-skill/main/install.sh)
 ```
 
 或手动安装：
