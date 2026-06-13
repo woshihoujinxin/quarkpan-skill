@@ -5,10 +5,9 @@
 
 import json
 import time
-from pathlib import Path
 from typing import Optional
 
-from ..config import get_config_dir
+from ..config import get_cookies_file
 from ..exceptions import AuthenticationError
 from ..utils.logger import get_logger
 
@@ -18,12 +17,11 @@ class SimpleLogin:
 
     def __init__(self):
         """初始化简化登录"""
-        self.config_dir = get_config_dir()
-        self.cookies_file = self.config_dir / "cookies.json"
+        self.cookies_file = get_cookies_file()
         self.logger = get_logger(__name__)
 
-        # 确保配置目录存在
-        self.config_dir.mkdir(parents=True, exist_ok=True)
+        # 确保 cookies 文件父目录存在
+        self.cookies_file.parent.mkdir(parents=True, exist_ok=True)
 
     def manual_login(self) -> str:
         """

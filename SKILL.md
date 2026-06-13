@@ -69,7 +69,7 @@ for i in range(15):
     result = login.check_login_status(qr_token)
     if result is not None:
         if login._is_login_success(result):
-            login._save_login_result(result)
+            login._process_login_result(result)
             cookies = [f'{c.name}={c.value}' for c in login.client.cookies.jar if c.domain and 'quark.cn' in c.domain]
             QuarkAuth()._save_cookies(QuarkAuth()._parse_cookie_string('; '.join(cookies)))
             print(f'LOGIN_SUCCESS ({len(cookies)} cookies)'); break
@@ -165,6 +165,13 @@ else:
 
 - **folder_id `"0"`** = 根目录
 - **file_type `0"`** = 文件夹
-- Cookies 存储在 `config/cookies.json`
+- **Cookies 存储路径**（按优先级命中即返回）：
+  1. `QUARK_COOKIES_FILE` 环境变量（绝对优先）
+  2. `QUARK_CONFIG_DIR` 环境变量目录下的 `cookies.json`
+  3. **`~/.config/quarkpan/cookies.json`**（多端共享约定，所有平台一致：Linux/macOS/Windows）
+  4. `~/.openclaw/workspace/skills/quarkpan/cookies.json`（OpenClaw 形态探测，无需环境变量）
+  5. `~/.claude/skills/quarkpan/cookies.json`（Claude 技能目录）
+  6. `~/.quarkpan/config/cookies.json`（向后兼容 fallback）
+- **多端同步**：把 `~/.config/quarkpan/` 用 syncthing / iCloud / OneDrive 同步到其他机器，所有机器共享同一份登录态，无需每端扫码。
 - 分享链接格式：`https://pan.quark.cn/s/{share_id}`
 - 仓库地址：`https://github.com/woshihoujinxin/quarkpan-skill`

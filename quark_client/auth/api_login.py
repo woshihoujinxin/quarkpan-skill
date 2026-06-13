@@ -18,7 +18,7 @@ if sys.platform == 'win32':
     if hasattr(sys.stderr, 'reconfigure'):
         sys.stderr.reconfigure(encoding='utf-8', errors='replace')
 
-from ..config import get_config_dir
+from ..config import get_cookies_file
 from ..exceptions import AuthenticationError
 from ..utils.logger import get_logger
 from ..utils.qr_code import display_qr_from_url
@@ -35,7 +35,7 @@ class APILogin:
             timeout: 登录超时时间（秒）
         """
         self.timeout = timeout
-        self.config_dir = get_config_dir()
+        self.cookies_file = get_cookies_file()
         self.client = httpx.Client(timeout=30.0)
         self.logger = get_logger(__name__)
 
@@ -58,8 +58,8 @@ class APILogin:
             'Sec-Fetch-Site': 'same-site'
         })
 
-        # 确保配置目录存在
-        self.config_dir.mkdir(parents=True, exist_ok=True)
+        # 确保 cookies 文件父目录存在
+        self.cookies_file.parent.mkdir(parents=True, exist_ok=True)
 
     def _show_countdown(self, total_seconds: int):
         """
@@ -384,8 +384,8 @@ class APILogin:
                         if self._is_login_success(result):
                             self._stop_countdown_display()
                             self.logger.info("登录成功")
-                            # 登录成功，保存cookies
-                            self._save_login_result(result)
+                            # 提取 service ticket 并换取 cookies（不再写入 login_result.json）
+                            self._process_login_result(result)
                             return True
                         elif self._is_login_failed(result):
                             self._stop_countdown_display()
@@ -411,26 +411,19 @@ class APILogin:
             # 确保倒计时停止
             self._stop_countdown_display()
 
-    def _save_login_result(self, result: Dict):
-        """保存登录结果"""
-        try:
-            # 保存原始结果
-            result_file = self.config_dir / "login_result.json"
-            with open(result_file, 'w', encoding='utf-8') as f:
-                json.dump(result, f, ensure_ascii=False, indent=2)
+    def _process_login_result(self, result: Dict) -> None:
+        """处理登录成功的接口响应：解析 service ticket 并换取 cookies。
 
-            self.logger.debug(f"登录结果已保存到: {result_file}")
+        注：旧版本曾把 result 完整写入 ``config/login_result.json``，但该文件后续
+        没有任何代码读取，属于一次性中间产物，因此这里只取必要字段。
+        """
+        service_ticket = result.get('data', {}).get('members', {}).get('service_ticket')
+        if not service_ticket:
+            self.logger.error("登录响应中缺少 service ticket")
+            return
 
-            # 提取登录token (service ticket)
-            service_ticket = result.get('data', {}).get('members', {}).get('service_ticket')
-            if service_ticket:
-                self.logger.debug(f"获取到service ticket: {service_ticket}")
-
-                # 使用service ticket获取用户信息和Cookie
-                self._get_user_info_and_cookies(service_ticket)
-
-        except Exception as e:
-            self.logger.error(f"保存登录结果失败: {e}")
+        self.logger.debug(f"获取到service ticket: {service_ticket}")
+        self._get_user_info_and_cookies(service_ticket)
 
     def _get_user_info_and_cookies(self, service_ticket: str):
         """
@@ -454,12 +447,9 @@ class APILogin:
                 user_info = response.json()
                 self.logger.debug("用户信息获取成功")
 
-                # 保存用户信息
-                user_info_file = self.config_dir / "user_info.json"
-                with open(user_info_file, 'w', encoding='utf-8') as f:
-                    json.dump(user_info, f, ensure_ascii=False, indent=2)
-
-                self.logger.debug(f"用户信息已保存到: {user_info_file}")
+                # 用户信息仅用于调试日志，不再落盘（旧版本曾写入 user_info.json，
+                # 该文件后续无任何代码读取，属于一次性中间产物）。
+                self.logger.debug(f"用户信息: {user_info}")
 
                 # 此时Cookie应该已经被自动设置到client中
                 self.logger.debug("登录Cookie已设置")

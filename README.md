@@ -450,8 +450,15 @@ quarkpan auth refresh
 quarkpan auth logout
 ```
 
-**Cookie 安全说明：**
-- Cookie 文件存储在 `config/cookies.json`
+**Cookie 路径优先级**（命中即返回）：
+1. `QUARK_COOKIES_FILE` 环境变量（绝对优先，指定文件）
+2. `QUARK_CONFIG_DIR` 环境变量（指定目录）
+3. **`~/.config/quarkpan/cookies.json`**（多端共享约定，**所有平台一致**：Linux/macOS/Windows Git Bash/PowerShell）
+4. `~/.openclaw/workspace/skills/quarkpan/cookies.json`（OpenClaw 形态探测，无需环境变量）
+5. `~/.claude/skills/quarkpan/cookies.json`（Claude 技能目录）
+6. `~/.quarkpan/config/cookies.json`（向后兼容 fallback）
+
+**多端同步**：把 `~/.config/quarkpan/` 用 syncthing / iCloud / OneDrive / Dropbox 等工具同步到其他机器，所有机器直接复用同一份 cookies，无需每端单独扫码。
 - 支持基础加密存储（可选）
 - 自动检测 Cookie 过期并提醒重新登录
 - 支持多账户 Cookie 管理（计划功能）
@@ -574,11 +581,9 @@ QuarkPan/
 │   ├── file_browser_demo.py # 文件浏览器演示
 │   ├── share_save_demo.py   # 分享转存演示
 │   └── enhanced_share_save_demo.py # 转存功能演示
-├── config/                  # 配置文件目录
+├── config/                  # 配置文件目录（默认存放位置，可由环境变量覆盖）
 │   ├── cookies.json         # 登录 Cookie 存储
-│   ├── login_result.json    # 登录结果缓存
-│   ├── qr_code.png          # 二维码图片
-│   └── user_info.json       # 用户信息缓存
+│   └── qr_code.png          # 二维码图片
 ├── cli.py                   # CLI 直接入口脚本
 ├── setup.py                 # 安装配置
 ├── requirements.txt         # 依赖列表
@@ -707,7 +712,7 @@ pip install -r requirements.txt pytest pytest-asyncio
 
 ### 使用须知
 1. **首次使用**: 需要通过扫码或手动方式完成登录认证
-2. **配置文件**: 登录信息保存在 `config/cookies.json`，请妥善保管
+2. **配置文件**: 登录信息优先保存在 `~/.config/quarkpan/cookies.json`（多端共享约定，所有平台一致）；单技能形态下会回落到 `~/.claude/skills/quarkpan/cookies.json`（Claude）或 `~/.openclaw/workspace/skills/quarkpan/cookies.json`（OpenClaw）。请妥善保管。可通过环境变量 `QUARK_COOKIES_FILE` 或 `QUARK_CONFIG_DIR` 覆盖。
 3. **网络环境**: 建议在稳定的网络环境下使用，避免上传 / 下载中断
 4. **账号安全**: 请使用官方夸克 APP 进行扫码登录，确保账号安全
 5. **功能限制**: 部分功能受夸克网盘官方 API 限制，可能会有调用频率限制
@@ -726,7 +731,7 @@ pip install -r requirements.txt pytest pytest-asyncio
 5. **法律合规**: 用户应确保使用行为符合当地法律法规要求
 
 ### 故障排除
-- **登录失败**: 尝试清除 `config/cookies.json` 后重新登录
+- **登录失败**: 尝试清除 `~/.config/quarkpan/cookies.json`（或对应技能目录下的 `cookies.json`）后重新登录
 - **API 错误**: 检查网络连接，或等待片刻后重试
 - **二维码不显示**: 检查终端是否支持图片显示，或查看 `config/qr_code.png`
 - **上传 / 下载中断**: 检查文件路径和网络连接状态

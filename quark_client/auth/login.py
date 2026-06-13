@@ -7,7 +7,7 @@ import json
 import time
 from typing import Dict, List, Optional
 
-from ..config import get_config_dir
+from ..config import get_cookies_file
 from ..exceptions import AuthenticationError, ConfigError
 from ..utils.logger import get_logger
 
@@ -23,12 +23,11 @@ class QuarkAuth:
             timeout: 登录超时时间(秒)，默认5分钟
         """
         self.timeout = timeout
-        self.config_dir = get_config_dir()
-        self.cookies_file = self.config_dir / "cookies.json"
+        self.cookies_file = get_cookies_file()
         self.logger = get_logger(__name__)
 
-        # 确保配置目录存在
-        self.config_dir.mkdir(parents=True, exist_ok=True)
+        # 确保 cookies 文件父目录存在
+        self.cookies_file.parent.mkdir(parents=True, exist_ok=True)
 
     def _save_cookies(self, cookies: List[Dict]) -> None:
         """保存cookies到本地文件"""
