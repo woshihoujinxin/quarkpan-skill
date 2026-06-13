@@ -25,7 +25,7 @@ bash <(curl -sL https://raw.githubusercontent.com/woshihoujinxin/quarkpan-skill/
 
 ```bash
 git clone https://github.com/woshihoujinxin/quarkpan-skill.git ~/.quarkpan-skill
-cd ~/.quarkpan-skill && pip install -e .
+cd ~/.quarkpan-skill && pip install . --quiet
 mkdir -p ~/.claude/skills/quarkpan && cp SKILL.md ~/.claude/skills/quarkpan/
 ```
 

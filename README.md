@@ -64,8 +64,8 @@ cd QuarkPan
 # 安装依赖
 pip install -r requirements.txt
 
-# 开发模式安装（可选）
-pip install -e .
+# 普通模式安装（拷贝到 site-packages，不开开发模式）
+pip install . --quiet
 ```
 
 #### 方法三：直接使用
@@ -82,7 +82,7 @@ python -m quark_client.cli --help
 # 2. 直接运行 CLI 脚本
 python cli.py --help
 
-# 3. 安装后使用命令行工具（需要先运行 pip install -e .）
+# 3. 安装后使用命令行工具（需要先运行 pip install . --quiet）
 # quarkpan --help
 ```
 
@@ -208,7 +208,7 @@ share_id, password = client.shares.parse_share_url(
 > **说明**: 以下所有命令都提供两种运行方式：
 > - `python -m quark_client.cli <command>` （模块方式）
 > - `python cli.py <command>` （脚本方式）  
-> - `quarkpan <command>` （安装后，需要先运行 `pip install -e .`）
+> - `quarkpan <command>` （安装后，需要先运行 `pip install . --quiet`）
 
 #### 交互式模式（推荐新用户）
 ```bash  
