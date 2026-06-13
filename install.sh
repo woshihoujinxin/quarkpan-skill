@@ -1,12 +1,14 @@
 #!/bin/bash
 # QuarkPan Skill 一键安装脚本
-# 用法: bash <(curl -sL https://raw.githubusercontent.com/woshihoujinxin/quarkpan-skill/main/install.sh)
+# 用法:
+#   GitHub: bash <(curl -sL https://raw.githubusercontent.com/woshihoujinxin/quarkpan-skill/main/install.sh)
+#   Gitee:  bash <(curl -sL https://gitee.com/houjinxin/quarkpan-skill/raw/main/install.sh)
 
 set -e
 
 SKILL_DIR="$HOME/.claude/skills/quarkpan"
 REPO_DIR="$HOME/.quarkpan-skill"
-REPO_URL="https://github.com/woshihoujinxin/quarkpan-skill.git"
+REPO_URL="${QUARKPAN_REPO_URL:-https://github.com/woshihoujinxin/quarkpan-skill.git}"
 
 echo "=== QuarkPan Skill Installer ==="
 

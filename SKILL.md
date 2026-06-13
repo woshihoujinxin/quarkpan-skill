@@ -18,13 +18,20 @@ metadata:
 一键安装（克隆代码 + pip安装 + 部署skill）：
 
 ```bash
+# GitHub
 bash <(curl -sL https://raw.githubusercontent.com/woshihoujinxin/quarkpan-skill/main/install.sh)
+# Gitee
+bash <(curl -sL https://gitee.com/houjinxin/quarkpan-skill/raw/main/install.sh)
 ```
 
 或手动安装：
 
 ```bash
+# GitHub
 git clone https://github.com/woshihoujinxin/quarkpan-skill.git ~/.quarkpan-skill
+# Gitee
+# git clone https://gitee.com/houjinxin/quarkpan-skill.git ~/.quarkpan-skill
+
 cd ~/.quarkpan-skill && pip install . --quiet
 mkdir -p ~/.claude/skills/quarkpan && cp SKILL.md ~/.claude/skills/quarkpan/
 ```
@@ -174,4 +181,6 @@ else:
   6. `~/.quarkpan/config/cookies.json`（向后兼容 fallback）
 - **多端同步**：把 `~/.config/quarkpan/` 用 syncthing / iCloud / OneDrive 同步到其他机器，所有机器共享同一份登录态，无需每端扫码。
 - 分享链接格式：`https://pan.quark.cn/s/{share_id}`
-- 仓库地址：`https://github.com/woshihoujinxin/quarkpan-skill`
+- 仓库地址：
+  - GitHub：`https://github.com/woshihoujinxin/quarkpan-skill`
+  - Gitee：`https://gitee.com/houjinxin/quarkpan-skill`

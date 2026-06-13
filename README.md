@@ -57,9 +57,12 @@ pip install quarkpan
 
 #### 方法二：从源码安装
 ```bash
-# 克隆项目
-git clone https://github.com/lich0821/QuarkPan.git
-cd QuarkPan
+# 克隆项目（GitHub）
+git clone https://github.com/woshihoujinxin/quarkpan-skill.git
+# 克隆项目（Gitee，国内加速）
+# git clone https://gitee.com/houjinxin/quarkpan-skill.git
+
+cd quarkpan-skill
 
 # 安装依赖
 pip install -r requirements.txt
@@ -71,8 +74,8 @@ pip install . --quiet
 #### 方法三：直接使用
 ```bash
 # 克隆后直接运行
-git clone https://github.com/lich0821/QuarkPan.git
-cd QuarkPan
+git clone https://github.com/woshihoujinxin/quarkpan-skill.git
+cd quarkpan-skill
 pip install -r requirements.txt
 
 # 三种运行方式任选其一：
@@ -738,7 +741,8 @@ pip install -r requirements.txt pytest pytest-asyncio
 - **命令行乱码**: 确保终端支持 UTF-8 编码
 
 ### 获取帮助
-- **GitHub Issues**: [提交问题报告](https://github.com/lich0821/QuarkPan/issues)
+- **GitHub Issues**: [提交问题报告](https://github.com/woshihoujinxin/quarkpan-skill/issues)
+- **Gitee Issues**: [提交问题报告](https://gitee.com/houjinxin/quarkpan-skill/issues)
 - **示例代码**: 参考 `examples/` 目录下的示例文件
 - **微信群**: 发送 `WCF` 进群交流
 <center>
