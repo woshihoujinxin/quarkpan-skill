@@ -44,7 +44,10 @@ git clone https://github.com/woshihoujinxin/quarkpan-skill.git ~/.quarkpan-skill
 # git clone https://gitee.com/houjinxin/quarkpan-skill.git ~/.quarkpan-skill
 
 cd ~/.quarkpan-skill && pip install . --quiet
-mkdir -p ~/.claude/skills/quarkpan && cp SKILL.md ~/.claude/skills/quarkpan/
+# 拷 SKILL.md 到「你自己的 Agent」技能目录（路径随 Agent 而变，勿写死）：
+#   WorkBuddy=~/.workbuddy/skills  Claude=~/.claude/skills  Cursor=~/.cursor/skills …
+mkdir -p "${SKILLS_DIR:-$HOME/.workbuddy/skills}/quarkpan" \
+  && cp SKILL.md "${SKILLS_DIR:-$HOME/.workbuddy/skills}/quarkpan/"
 ```
 
 首次使用需要扫码登录（见下方）。

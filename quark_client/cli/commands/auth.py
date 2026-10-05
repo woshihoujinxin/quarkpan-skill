@@ -2,12 +2,25 @@
 认证管理命令
 """
 
+import json
+import time
+
 import typer
 from rich import print as rprint
 
+from ...config import get_config_dir
 from ..utils import get_client, print_error, print_info, print_success
 
 auth_app = typer.Typer(help="🔐 认证管理")
+
+# `auth qr` 落盘的待扫码会话；`auth wait` 缺省读它。
+# 为什么要落盘：Agent / 脚本环境里「出码」和「等扫码」必须在两次调用之间隔着
+# 一次「把图片发给用户」的动作，不能像 `auth login` 那样一口气阻塞到底。
+PENDING_QR_FILE = "qr_pending.json"
+
+
+def _pending_qr_path():
+    return get_config_dir() / PENDING_QR_FILE
 
 
 @auth_app.command()
@@ -92,6 +105,96 @@ def login(
 
 
 @auth_app.command()
+def qr(
+    box_size: int = typer.Option(10, "--box-size", help="每个二维码模块的像素边长（越大越清晰）"),
+    open_viewer: bool = typer.Option(
+        False, "--open/--no-open", help="生成后用系统看图程序打开（无图形环境的 Agent 请用 --no-open）"
+    ),
+):
+    """📷 只生成登录二维码 PNG（不阻塞）—— 出码与等扫码分离的第一步
+
+    与 `auth login` 的区别：`login` 会**阻塞**到扫码完成或超时，中途没法把图片先交给
+    用户；本命令立刻返回，把二维码 PNG 路径和二维码 token 打出来并落盘，
+    之后用 `quarkpan auth wait` 等扫码（扫码后凭证自动写入 cookies.json）。
+
+    输出（可直接被 Agent/脚本解析）：
+      QR_PNG_PATH=<png 绝对路径>
+      QR_TOKEN=<二维码 token>
+    """
+    from ...auth.api_login import APILogin
+    from ...utils.qr_code import display_qr_from_url
+
+    try:
+        login = APILogin(timeout=300)
+        qr_token, qr_url = login.get_qr_code()
+    except Exception as e:
+        print_error(f"获取二维码失败: {e}")
+        raise typer.Exit(1)
+
+    png_path = display_qr_from_url(qr_url, box_size=box_size, open_viewer=open_viewer)
+    if not png_path:
+        print_error("二维码 PNG 生成失败（详见上方告警）")
+        raise typer.Exit(1)
+
+    pending = _pending_qr_path()
+    pending.parent.mkdir(parents=True, exist_ok=True)
+    pending.write_text(
+        json.dumps(
+            {"qr_token": qr_token, "qr_url": qr_url, "png_path": png_path, "created_at": int(time.time())},
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+
+    # QR_PNG_PATH 已由 display_qr_from_url 打印（SDK 的统一出口），这里只补 token
+    print(f"QR_TOKEN={qr_token}")
+    rprint("[dim]请用夸克 App 扫码；扫码后执行 [cyan]quarkpan auth wait[/cyan] 完成登录[/dim]")
+
+
+@auth_app.command()
+def wait(
+    token: str = typer.Option(None, "--token", help="二维码 token；缺省读上一次 `auth qr` 落盘的会话"),
+    timeout: int = typer.Option(300, "--timeout", help="等待超时（秒）"),
+):
+    """⏳ 等待扫码并完成登录（阻塞）—— 出码与等扫码分离的第二步
+
+    成功后登录凭证会写入 cookies.json（`quarkpan auth status` 即可看到「已登录」）。
+    期间二维码过期就重新执行 `quarkpan auth qr`。
+    """
+    from ...auth.api_login import APILogin
+
+    if not token:
+        pending = _pending_qr_path()
+        if not pending.exists():
+            print_error("找不到待扫码会话，请先执行: quarkpan auth qr")
+            raise typer.Exit(1)
+        try:
+            token = json.loads(pending.read_text(encoding="utf-8"))["qr_token"]
+        except Exception as e:
+            print_error(f"待扫码会话文件损坏（{pending}）: {e}")
+            raise typer.Exit(1)
+
+    try:
+        login = APILogin(timeout=timeout)
+        ok = login.wait_for_login(token)  # 内部：轮询 + 兑换 cookies + 落盘
+    except Exception as e:
+        print_error(f"等待登录失败: {e}")
+        raise typer.Exit(1)
+
+    if ok:
+        print("LOGIN_SUCCESS")
+        print_success("登录成功，凭证已保存")
+        try:
+            _pending_qr_path().unlink(missing_ok=True)
+        except Exception:
+            pass
+    else:
+        print("LOGIN_FAILED")
+        print_error("登录超时或失败，请重新执行: quarkpan auth qr")
+        raise typer.Exit(1)
+
+
+@auth_app.command()
 def logout():
     """登出夸克网盘"""
     try:
@@ -151,7 +254,9 @@ def info():
 [bold blue]🔐 认证管理[/bold blue]
 
 [bold]可用命令:[/bold]
-  [cyan]login[/cyan]   - 登录夸克网盘
+  [cyan]login[/cyan]   - 登录夸克网盘（一步到位，阻塞到扫码完成）
+  [cyan]qr[/cyan]      - 只生成登录二维码 PNG（不阻塞）
+  [cyan]wait[/cyan]    - 等待扫码并完成登录（配合 qr 使用）
   [cyan]logout[/cyan]  - 登出
   [cyan]status[/cyan]  - 检查登录状态
 
