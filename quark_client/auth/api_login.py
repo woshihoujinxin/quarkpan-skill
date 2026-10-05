@@ -412,10 +412,17 @@ class APILogin:
             self._stop_countdown_display()
 
     def _process_login_result(self, result: Dict) -> None:
-        """处理登录成功的接口响应：解析 service ticket 并换取 cookies。
+        """处理登录成功的接口响应：解析 service ticket、换取 cookies 并**落盘**。
 
-        注：旧版本曾把 result 完整写入 ``config/login_result.json``，但该文件后续
+        注 1：旧版本曾把 result 完整写入 ``config/login_result.json``，但该文件后续
         没有任何代码读取，属于一次性中间产物，因此这里只取必要字段。
+
+        注 2（🔴 重要修复）：本方法在换取到 cookies 后**必须落盘**，否则
+        ``quarkpan auth status`` 永远报未登录。历史缺陷是：APILogin 只把 cookie 设到
+        内存中的 httpx client 上就返回，落盘逻辑仅存在于 ``QuarkAuth._save_cookies``
+        （即 ``quarkpan auth login`` 那条路径）。于是凡走「直接 new APILogin() +
+        wait_for_login()」的路径（安装说明与技能脚本原先正是这么写的），扫码成功后
+        全盘找不到 cookies.json —— 用户看到的现象就是「CLI 报告未登录」。
         """
         service_ticket = result.get('data', {}).get('members', {}).get('service_ticket')
         if not service_ticket:
@@ -424,6 +431,38 @@ class APILogin:
 
         self.logger.debug(f"获取到service ticket: {service_ticket}")
         self._get_user_info_and_cookies(service_ticket)
+        self._save_cookies()
+
+    def _save_cookies(self) -> None:
+        """把当前 client 上的夸克 cookies 落盘到 ``cookies_file``。
+
+        存储结构与 ``QuarkAuth._save_cookies`` 完全一致（``{'cookies': [...],
+        'timestamp': ..., 'expires_at': ...}``），且直接复用其实现，避免两处格式漂移 ——
+        这样 ``quarkpan auth status`` / ``QuarkAuth._load_cookies`` 都能读到本方法写的文件。
+        """
+        try:
+            from .login import QuarkAuth
+
+            auth = QuarkAuth(timeout=self.timeout)
+            cookies = []
+            for cookie in self.client.cookies.jar:
+                if cookie.domain and 'quark.cn' in cookie.domain:
+                    cookies.append({
+                        'name': cookie.name,
+                        'value': cookie.value,
+                        'domain': cookie.domain,
+                        'path': cookie.path,
+                        # -1 表示"无显式过期"，_get_cookies_expire_time 会回退到 now+7d。
+                        # 不能传 None：那里会做 `cookie['expires'] > 0` 的比较。
+                        'expires': getattr(cookie, 'expires', None) or -1,
+                    })
+            if not cookies:
+                self.logger.warning("未从登录响应中提取到任何夸克 cookie，跳过落盘")
+                return
+            auth._save_cookies(cookies)
+            self.logger.info(f"登录凭证已保存到 {self.cookies_file}")
+        except Exception as e:
+            self.logger.error(f"保存登录凭证失败: {e}")
 
     def _get_user_info_and_cookies(self, service_ticket: str):
         """

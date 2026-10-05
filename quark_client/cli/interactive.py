@@ -1015,7 +1015,10 @@ class InteractiveShell:
     def cmd_version(self, args: List[str]):
         """显示版本信息"""
         from rich import print as rprint
-        rprint("[bold blue]QuarkPan CLI[/bold blue] [green]v1.0.0[/green]")
+
+        from .. import __version__
+
+        rprint(f"[bold blue]QuarkPan CLI[/bold blue] [green]v{__version__}[/green]")
         rprint("夸克网盘命令行工具 - 交互模式")
 
 

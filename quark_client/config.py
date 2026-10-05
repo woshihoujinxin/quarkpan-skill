@@ -72,7 +72,6 @@ def get_cookies_file() -> Path:
     6. ``~/.claude/skills/quarkpan/cookies.json``（Claude 形态探测）
     7. ``__file__`` 推断出的技能根（如果是 Claude 形态）
     8. 默认归宿：``~/.config/quarkpan/cookies.json``（多端共享，便于发现和迁移）
-    9. 旧 fallback ``~/.quarkpan/config/cookies.json``（向后兼容）
 
     父目录会被自动创建。
     """
@@ -134,15 +133,14 @@ def get_cookies_file() -> Path:
         return path
 
     # 8) 默认归宿：~/.config/quarkpan/（多端共享，便于发现和迁移）
+    #
+    # 注：旧版在此行下方还挂着一条「9) 旧 fallback ~/.quarkpan/config/cookies.json」，
+    # 但本行是无条件 return，其后的代码永远不可达 —— 已删除。留着只会让读者误以为
+    # 存在第 9 级回落，进而在排障时往错误的方向找 cookies。get_config_dir() 里仍保留
+    # legacy 目录，用于兼容更早的安装。
     user_cookies.parent.mkdir(parents=True, exist_ok=True)
     logger.debug(f"cookies 路径 (user_config, default for new install): {user_cookies}")
     return user_cookies
-
-    # 9) 旧 fallback（向后兼容）
-    legacy_path = Path.home() / '.quarkpan' / 'config' / 'cookies.json'
-    legacy_path.parent.mkdir(parents=True, exist_ok=True)
-    logger.debug(f"cookies 路径 (legacy default): {legacy_path}")
-    return legacy_path
 
 
 def _is_openclaw_skill_root(skill_root: Path) -> bool:

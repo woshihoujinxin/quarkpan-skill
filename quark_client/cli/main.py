@@ -284,7 +284,10 @@ def move_to(
 @app.command()
 def version():
     """显示版本信息"""
-    rprint("[bold blue]QuarkPan CLI[/bold blue] [green]v1.0.0[/green]")
+    # 从包内单一定义读取，避免与 pyproject.toml / dist-info 漂移
+    from .. import __version__
+
+    rprint(f"[bold blue]QuarkPan CLI[/bold blue] [green]v{__version__}[/green]")
     rprint("夸克网盘命令行工具")
 
 
