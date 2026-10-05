@@ -58,29 +58,60 @@ class QuarkAuth:
         except Exception:
             return None
 
-    def _get_cookies_expire_time(self, cookies: List[Dict]) -> Optional[int]:
-        """获取cookies的过期时间"""
-        min_expire = None
-        for cookie in cookies:
-            # 检查所有cookie，不只是quark域名的
-            if 'expires' in cookie and cookie['expires'] > 0:
-                expire_time = cookie['expires']
-                if min_expire is None or expire_time < min_expire:
-                    min_expire = expire_time
+    def _get_cookies_expire_time(self, cookies: List[Dict]) -> int:
+        """获取 cookies 的整体过期时间
 
-        # 如果没有找到有效的过期时间，返回一个合理的默认值（7天后）
-        if min_expire is None:
-            import time
-            min_expire = int(time.time()) + (7 * 24 * 3600)
+        🔴 背景缺陷（2026-10-05 实测）：夸克登录会同时下发**短命的追踪/分析类
+        cookie**（实测 `_UP_F7E_8D_` 的 expires 只有 10 分钟），它并不代表登录
+        凭证的有效期。旧实现取「所有 cookie 里最小的 expires」，于是刚扫码登录
+        10 分钟就被判为「已过期」→ `_load_cookies()` 返回 None → 用户被迫反复
+        扫码（表现为「用起来怪怪的、不流畅」）。
 
-        return min_expire
+        真正决定登录态的是 `__pus` / `__kp` / `__kps` / `__ktd` / `__uid`
+        （实测约 14 天）与 `_UP_*` 系列（7~365 天）。
+
+        因此这里**先剔除「剩余不足 1 小时」的短命 cookie**，再取其中最小的
+        expires 作为整体有效期（保守但不误杀）；若全都是短命 cookie（罕见），
+        退回取最长者并至少保底 1 小时，避免「刚写入即过期」。
+        """
+        import time
+
+        now = int(time.time())
+        expires = [
+            int(cookie['expires'])
+            for cookie in cookies
+            if isinstance(cookie.get('expires'), (int, float)) and cookie['expires'] > 0
+        ]
+
+        # 没有任何可用的过期时间 → 保守按 7 天
+        if not expires:
+            return now + (7 * 24 * 3600)
+
+        meaningful = [e for e in expires if e - now > 3600]
+        if meaningful:
+            return min(meaningful)
+
+        # 全是短命 cookie：取最长者，且至少保底 1 小时
+        return max(max(expires), now + 3600)
 
     def _is_cookies_expired(self, cookie_data: Dict) -> bool:
-        """检查cookies是否过期"""
+        """检查 cookies 是否过期
+
+        注意：**优先按当前算法重算**，只把文件里缓存的 `expires_at` 当兜底。
+        原因：历史版本写下的 `expires_at` 可能带着已知的错误（见
+        `_get_cookies_expire_time` 的说明）。若继续信任缓存值，用户必须重新扫码
+        才能恢复；重算可让「凭证本身仍在有效期内」的旧文件**自动复活**。
+        另外，cookies 为空时无法重算，此时才回落到缓存值 / timestamp 的 7 天规则。
+        """
         import time
+
         current_time = int(time.time())
 
-        # 如果过期时间无效（None、-1等），使用时间戳检查
+        cookies = cookie_data.get('cookies') or []
+        if cookies:
+            return current_time > self._get_cookies_expire_time(cookies)
+
+        # 无法重算（无 cookies 列表）：使用缓存值
         expires_at = cookie_data.get('expires_at')
         if expires_at is None or expires_at <= 0:
             # 如果没有过期时间信息，检查是否超过7天
