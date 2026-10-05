@@ -5,14 +5,15 @@ httpx>=0.24.0
 typer>=0.9.0
 rich>=13.0.0
 
-# 数据处理
-pydantic>=2.0.0
-
 # 二维码支持
 qrcode>=7.4.0
 
 # 进度条
 tqdm>=4.65.0
+
+# 说明：这里**曾经**有 pydantic>=2.0.0，但源码从未 import 过它。
+# 保留它只会把 pydantic-core 这个平台绑定的二进制 wheel 拖进依赖树，
+# 让离线包必须在每个平台/每个 Python ABI 各备一份 wheel。已移除，请勿加回。
 
 # 开发依赖（可选）
 pytest>=7.0.0

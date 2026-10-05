@@ -3,9 +3,16 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "quarkpan"
-version = "1.0.5"
-description = "夸克网盘 Python 客户端和命令行工具"
+# 🔴 distribution name 故意用 quarkpan-ks（不是 quarkpan）：
+# PyPI 上存在官方 quarkpan 包，且其最新版本号恰好也是 1.0.5，与本仓库同版本号。
+# 若沿用名字 quarkpan，`pip install quarkpan` / `pip install --find-links ... quarkpan`
+# 在联网时会解析到 PyPI 官方版（缺 get_cookies_file 等本地改动），已在真机复现。
+# 改名为唯一的 quarkpan-ks 后，pip 无论怎么输都不会误装官方版。
+# import 名（quark_client）与 CLI 名（quarkpan，见下方 [project.scripts]）均保持不变，
+# 故所有技能脚本、文档零改动。
+name = "quarkpan-ks"
+version = "1.0.6"
+description = "夸克网盘 Python 客户端和命令行工具（ks 维护版）"
 readme = "README.md"
 license = {file = "LICENSE"}
 authors = [{ name = "QuarkPan Team", email = "tequant.ai@gmail.com" }]
@@ -17,25 +24,32 @@ classifiers = [
     "Intended Audience :: End Users/Desktop",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Internet :: File Transfer Protocol (FTP)",
     "Topic :: System :: Archiving",
     "Topic :: Utilities",
     "Environment :: Console",
     "Natural Language :: Chinese (Simplified)",
 ]
-requires-python = ">=3.8"
+# 真实下限是 3.10：源码用了 PEP 604 的 `X | None` 运行期注解（如 config.py），
+# 且依赖链（h2 / typer / anyio / markdown-it-py / annotated-types）均要求 >=3.10。
+# 旧值 ">=3.8" 会让 pip 在 3.8/3.9 上放行安装，随后 import 即 TypeError。
+requires-python = ">=3.10"
 dependencies = [
     "httpx>=0.24.0",
     "typer>=0.9.0",
     "rich>=13.0.0",
-    "pydantic>=2.0.0",
+    # qrcode：utils/qr_code.py 生成扫码登录二维码（纯 Python，无平台二进制）
     "qrcode>=7.4.0",
+    # tqdm：services/file_service.py 下载进度条（纯 Python）
     "tqdm>=4.65.0",
+    # 🔴 已移除 pydantic>=2.0.0：全仓库源码零 pydantic 引用（实测 grep 无命中）。
+    # 保留它的唯一效果是把 pydantic-core 这个**平台绑定的二进制 wheel**拖进依赖树，
+    # 导致离线包必须在每个平台/每个 Python ABI 各备一份 wheel（曾只有 cp313-macos_arm64
+    # 一份，Linux/Windows/py310-312 一律装不上）。删掉后剩余依赖全是 py3-none-any。
 ]
 
 [project.optional-dependencies]
@@ -50,11 +64,9 @@ dev = [
 test = ["pytest>=7.0.0", "pytest-asyncio>=0.21.0", "pytest-cov"]
 
 [project.urls]
-"Homepage" = "https://github.com/lich0821/QuarkPan"
-"Bug Reports" = "https://github.com/lich0821/QuarkPan/issues"
-"Source" = "https://github.com/lich0821/QuarkPan"
-"Documentation" = "https://github.com/lich0821/QuarkPan/blob/main/docs/"
-"Changelog" = "https://github.com/lich0821/QuarkPan/releases"
+"Homepage" = "https://github.com/woshihoujinxin/quarkpan-skill"
+"Bug Reports" = "https://github.com/woshihoujinxin/quarkpan-skill/issues"
+"Source" = "https://github.com/woshihoujinxin/quarkpan-skill"
 
 [project.scripts]
 quarkpan = "quark_client.cli.main:app"
@@ -69,7 +81,7 @@ include = ["quark_client*"]
 # 开发工具配置
 [tool.black]
 line-length = 120
-target-version = ['py38']
+target-version = ['py310']
 include = '\.pyi?$'
 extend-exclude = '''
 /(
@@ -92,7 +104,7 @@ line_length = 120
 known_first_party = ["quark_client"]
 
 [tool.mypy]
-python_version = "3.8"
+python_version = "3.10"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
