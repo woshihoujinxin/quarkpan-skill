@@ -5,10 +5,10 @@
 from typing import List, Optional
 
 import typer
-from rich.prompt import Confirm
 
-from ..utils import (get_client, handle_api_error, print_error, print_info,
-                     print_success, print_warning)
+from ..utils import (ensure_confirm, format_timestamp, get_client,
+                     handle_api_error, print_error, print_info, print_success,
+                     print_warning)
 
 
 def create_folder(folder_name: str, parent_id: str = "0"):
@@ -61,9 +61,12 @@ def delete_files(paths: List[str], force: bool = False, use_id: bool = False):
                         file_info = client.get_file_info(file_id)
                         file_name = file_info.get('file_name', file_id)
                         file_type = "文件夹" if file_info.get('file_type') == 0 else "文件"
-                        print_info(f"  {i}. {file_type}: {file_name}")
-                    except:
-                        print_info(f"  {i}. ID: {file_id}")
+                        # 带 fid 前缀：确认环节最怕「这到底是哪个文件」，光看名字容易看错
+                        print_info(f"  {i}. {file_type}: {file_name}  (fid: {file_id})")
+                    except Exception as e:
+                        # ⚠️ 拿不到详情时明说，别静默退化成一行 ID（旧实现在这里
+                        #    会因为服务端忽略参数而**显示成别的文件**，见 file_service 注释）
+                        print_info(f"  {i}. ID: {file_id}  (⚠️ 未能读取详情: {e})")
             else:
                 # 使用路径解析
                 print_warning(f"准备删除 {len(paths)} 个文件/文件夹:")
@@ -84,10 +87,12 @@ def delete_files(paths: List[str], force: bool = False, use_id: bool = False):
                 file_ids = resolved_items
 
             # 确认删除
-            if not force:
-                if not Confirm.ask("\n确定要删除这些文件/文件夹吗？"):
-                    print_info("取消删除操作")
-                    return
+            # 🔴 用 ensure_confirm 而不是裸 Confirm.ask：非交互环境下裸 ask 会
+            #    **永久挂死**（stdin 是打开但不写入的管道）或被 SIGTERM（exit 137、零输出）。
+            #    ensure_confirm 在非交互且未给 -f 时**快速失败**（退出码 2）并提示加 -f。
+            if not ensure_confirm(force, "\n确定要删除这些文件/文件夹吗？", action="删除"):
+                print_info("取消删除操作")
+                return
 
             print_info("正在删除文件...")
 
@@ -103,6 +108,9 @@ def delete_files(paths: List[str], force: bool = False, use_id: bool = False):
                 print_error(f"删除失败: {error_msg}")
                 raise typer.Exit(1)
 
+    except typer.Exit:
+        # 上面主动抛的 Exit 不能被下面的兜底 except 吞掉改写退出码
+        raise
     except Exception as e:
         handle_api_error(e, "删除文件")
         raise typer.Exit(1)
@@ -123,10 +131,10 @@ def rename_file(path: str, new_name: str, use_id: bool = False):
                     file_info = client.get_file_info(file_id)
                     old_name = file_info.get('file_name', file_id)
                     file_type = "文件夹" if file_info.get('file_type') == 0 else "文件"
-                    print_info(f"当前{file_type}名称: {old_name}")
+                    print_info(f"当前{file_type}名称: {old_name}  (fid: {file_id})")
                     print_info(f"新{file_type}名称: {new_name}")
-                except:
-                    print_info(f"文件ID: {file_id}")
+                except Exception as e:
+                    print_info(f"文件ID: {file_id}  (⚠️ 未能读取详情: {e})")
                     print_info(f"新名称: {new_name}")
 
                 result = client.rename_file(file_id, new_name)
@@ -153,6 +161,8 @@ def rename_file(path: str, new_name: str, use_id: bool = False):
                 print_error(f"重命名失败: {error_msg}")
                 raise typer.Exit(1)
 
+    except typer.Exit:
+        raise
     except Exception as e:
         handle_api_error(e, "重命名文件")
         raise typer.Exit(1)
@@ -179,13 +189,15 @@ def file_info(file_id: str):
                 table.add_column("属性", style="cyan")
                 table.add_column("值", style="white")
 
-                table.add_row("文件名", file_info.get('file_name', '未知'))
-                table.add_row("文件ID", file_info.get('fid', '未知'))
+                table.add_row("文件名", str(file_info.get('file_name', '未知')))
+                table.add_row("文件ID", str(file_info.get('fid', '未知')))
                 table.add_row("类型", "文件夹" if file_info.get('file_type') == 0 else "文件")
-                table.add_row("大小", _format_size(file_info.get('size', 0)))
-                table.add_row("格式", file_info.get('format_type', '未知'))
-                table.add_row("创建时间", file_info.get('created_at', '未知'))
-                table.add_row("修改时间", file_info.get('updated_at', '未知'))
+                table.add_row("大小", _format_size(file_info.get('size')))
+                table.add_row("格式", str(file_info.get('format_type') or '未知'))
+                # 🔴 created_at / updated_at 是 **int 时间戳**：直接塞进 rich Table
+                #    会抛 `unable to render int`（本命令此前一直没人跑，所以这个坑一直没暴露）。
+                table.add_row("创建时间", format_timestamp(file_info.get('created_at')))
+                table.add_row("修改时间", format_timestamp(file_info.get('updated_at')))
 
                 console.print(table)
             else:
@@ -237,8 +249,13 @@ def get_download_link(file_id: str):
         raise typer.Exit(1)
 
 
-def _format_size(size: int) -> str:
-    """格式化文件大小"""
+def _format_size(size) -> str:
+    """格式化文件大小（容错：None / 非数字 / 字符串数字都不炸）"""
+    try:
+        size = int(size or 0)
+    except (TypeError, ValueError):
+        return str(size)
+
     if size < 1024:
         return f"{size} B"
     elif size < 1024 * 1024:

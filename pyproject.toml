@@ -11,7 +11,7 @@ build-backend = "setuptools.build_meta"
 # import 名（quark_client）与 CLI 名（quarkpan，见下方 [project.scripts]）均保持不变，
 # 故所有技能脚本、文档零改动。
 name = "quarkpan-ks"
-version = "1.0.6"
+version = "1.0.8"
 description = "夸克网盘 Python 客户端和命令行工具（ks 维护版）"
 readme = "README.md"
 license = {file = "LICENSE"}

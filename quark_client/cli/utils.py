@@ -8,6 +8,7 @@ from typing import Optional
 
 from rich import print as rprint
 from rich.console import Console
+from rich.prompt import Confirm
 
 from ..client import QuarkClient
 
@@ -53,8 +54,54 @@ def format_timestamp(timestamp) -> str:
         return str(timestamp)
 
 
+def is_interactive() -> bool:
+    """当前是否处于可交互终端（stdin 是 TTY）。
+
+    🔴 为什么必须有这个判断：在**非交互**环境（Agent / CI / 管道 / `cmd </dev/null`）里，
+    `input()` / `rich.prompt.Confirm.ask()` 有两种坏结局，都很难排查：
+      1. stdin 是「已打开但永不写入」的管道 → **永久挂死**，直到被 SIGTERM 杀掉
+         （现象：exit 137、零输出、看着像卡在网络请求上）；
+      2. stdin 是 /dev/null → 抛出 `EOF when reading a line`，被上层包装成
+         「删除失败」之类**误导性**报错，看起来像业务错误，其实是确认环节没得读。
+    所以破坏性命令一律先判 is_interactive()，再做后续动作。
+    """
+    try:
+        return bool(sys.stdin) and sys.stdin.isatty()
+    except Exception:
+        return False
+
+
+NONINTERACTIVE_HINT = (
+    "当前不是交互式终端（无 TTY），无法询问确认。[bold]已中止，未执行任何变更[/bold]。\n"
+    "   👉 脚本 / Agent 里请显式加 -f（--force），例如：quarkpan rm -f --id <fid>"
+)
+
+
+def ensure_confirm(force: bool, message: str, action: str = "该操作") -> bool:
+    """破坏性操作的统一确认入口。
+
+    - `force=True`          → 直接放行（等价 CLI 的 `-f/--force`）
+    - 非交互终端且未给 -f   → **快速失败**（退出码 2），绝不阻塞等待输入
+    - 交互终端              → 正常询问
+    """
+    if force:
+        return True
+    if not is_interactive():
+        print_error(f"「{action}」需要确认，但{NONINTERACTIVE_HINT}")
+        sys.exit(2)
+    return Confirm.ask(message)
+
+
 def confirm_action(message: str, default: bool = False) -> bool:
-    """确认操作"""
+    """确认操作。
+
+    ⚠️ 非交互终端下**绝不阻塞**：直接按「否」返回（最安全的默认），并提示怎么放行。
+    """
+    if not is_interactive():
+        print_warning("当前不是交互式终端（无 TTY），无法询问确认 —— 已按「否」处理。")
+        print_info("    如需在脚本 / Agent 中执行，请显式加 -f（--force）。")
+        return False
+
     suffix = " [Y/n]" if default else " [y/N]"
     response = console.input(f"[yellow]{message}{suffix}[/yellow] ")
 

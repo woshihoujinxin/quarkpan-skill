@@ -27,7 +27,7 @@ from .services.share_service import ShareService
 # 🔴 版本号单一定义源：CLI 的 `quarkpan version` 也从这里读。
 # 改动时请与 pyproject.toml 的 version 保持一致（曾经是 0.1.0 / CLI 硬编码 1.0.0 /
 # 发行版 1.0.5 三个值各不相同，排障时会误导）。
-__version__ = "1.0.6"
+__version__ = "1.0.8"
 __author__ = "QuarkPan Team"
 __email__ = "contact@quarkpan.dev"
 

@@ -73,32 +73,47 @@ class FileService:
 
         Returns:
             文件信息字典
+
+        Raises:
+            FileNotFoundError: 该 ID 不存在，或接口未能返回该文件的详情
+
+        🔴 端点/参数名是硬契约（2026-10-05 真机实测确认，勿凭直觉改回）：
+
+            ✅ GET file/info?fid=<fid>  → 精确返回该文件的详情
+            ❌ GET file?fids=<fid>      → 该端点只认 pdir_fid（列目录语义），
+               fid / fids 会被服务端**静默忽略**并回落成「根目录列表」，
+               再被旧实现里「没匹配到就 return file_list[0]」的兜底吞掉 ——
+               结果是把**根目录第一条**当成目标文件返回（张冠李戴）。
+               实测症状：删某个 zip 的 fid，预览打印出 `文件夹: workbuddy-闲鱼自动化`
+               （根目录第一条），看着像要删整个文件夹。
         """
         if not file_id or file_id == "0":
             raise ValueError("无效的文件ID")
 
-        params = {'fids': file_id}
+        params = {'fid': file_id}
 
         try:
-            response = self.client.get('file', params=params)
+            response = self.client.get('file/info', params=params)
 
-            # 检查响应格式
-            if isinstance(response, dict) and 'data' in response:
-                data = response['data']
-                if isinstance(data, dict) and 'list' in data:
-                    file_list = data['list']
-                    if file_list and len(file_list) > 0:
-                        # 查找匹配的文件ID
-                        for file_info in file_list:
-                            if file_info.get('fid') == file_id:
-                                return file_info
+            data = response.get('data') if isinstance(response, dict) else None
 
-                        # 如果没有找到精确匹配，返回第一个
-                        return file_list[0]
-                elif isinstance(data, list) and len(data) > 0:
-                    # 兼容旧格式
-                    return data[0]
+            # 主格式：data 直接就是该文件对象
+            if isinstance(data, dict) and data.get('fid'):
+                return data
 
+            # 兼容万一服务端改回列表格式 —— 但只认**精确命中**
+            candidates: List[Dict[str, Any]] = []
+            if isinstance(data, dict) and isinstance(data.get('list'), list):
+                candidates = [x for x in data['list'] if isinstance(x, dict)]
+            elif isinstance(data, list):
+                candidates = [x for x in data if isinstance(x, dict)]
+
+            for file_info in candidates:
+                if file_info.get('fid') == file_id:
+                    return file_info
+
+            # 🔴 绝不「返回第一条」兜底：拿不准就报错。
+            #    宁可让调用方显式失败，也不要拿别的文件冒充（曾导致删除预览张冠李戴）。
             raise FileNotFoundError(f"文件不存在: {file_id}")
 
         except APIError as e:

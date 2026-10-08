@@ -15,7 +15,8 @@ from .commands.basic_fileops import upload_file
 from .commands.batch_share_commands import batch_share, list_structure
 from .commands.move_commands import move_files
 from .commands.share_commands import create_share, list_my_shares, save_share
-from .utils import get_client, print_error, print_info, print_success, print_warning
+from .utils import (confirm_action, get_client, print_error, print_info,
+                    print_success, print_warning)
 
 console = Console()
 
@@ -428,11 +429,10 @@ class InteractiveShell:
             for i, path in enumerate(args, 1):
                 print_info(f"  {i}. {path}")
 
-            from rich.prompt import Confirm
-            if not Confirm.ask("\n确定要删除这些文件/文件夹吗？"):
+            # 用 confirm_action 而不是裸 Confirm.ask：后者在非交互终端下会挂死
+            if not confirm_action("\n确定要删除这些文件/文件夹吗？"):
                 print_info("取消删除操作")
                 return
-
             result = self.client.delete_files_by_name(args, self.current_folder_id)  # type: ignore[attr-defined]
 
             if result and result.get('status') == 200:
