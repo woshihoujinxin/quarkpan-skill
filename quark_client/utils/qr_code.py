@@ -32,6 +32,19 @@ def display_qr_code(qr_image_path: str):
     print(f"二维码文件位置: {qr_image_path}")
 
 
+def _qr_viewer_enabled() -> bool:
+    """是否允许调用系统看图程序打开二维码。
+
+    默认 **关**。原因：这条链路会被「探测登录态」隐式触发 ——
+    QuarkAPIClient(auto_login=True) 在构造函数里就调登录，
+    用户屏幕上凭空多出一张二维码 PNG，既说不清哪来的，也不知道扫了会发生什么。
+    需要弹窗时显式设置 QUARKPAN_QR_OPEN=1（`quarkpan auth login` 会自己设）。
+    """
+    return os.environ.get("QUARKPAN_QR_OPEN", "").strip().lower() in (
+        "1", "true", "yes", "on",
+    )
+
+
 def _open_image(image_path: str):
     """用系统默认图片查看器打开"""
     try:
@@ -49,7 +62,7 @@ def display_qr_from_url(
     url: str,
     box_size: int = 10,
     border: int = 4,
-    open_viewer: bool = True,
+    open_viewer: Optional[bool] = None,
 ) -> Optional[str]:
     """生成二维码供用户扫码。
 
@@ -72,6 +85,9 @@ def display_qr_from_url(
     Returns:
         生成的 PNG 绝对路径；连 PNG 都写不出时返回 None（此时只剩终端 ASCII 兜底）。
     """
+    if open_viewer is None:
+        open_viewer = _qr_viewer_enabled()
+
     logger = get_logger(__name__)
     from ..config import get_config_dir
     from .qr_png import write_qr_png
@@ -93,6 +109,8 @@ def display_qr_from_url(
     print(f"QR_PNG_PATH={img_path}")
     if open_viewer:
         _open_image(str(img_path))
+    else:
+        print("（未自动打开图片；需要弹窗请设 QUARKPAN_QR_OPEN=1）")
 
     # 终端 ASCII 作为并行兜底（无图形环境也能扫）
     print_ascii_qr(url)

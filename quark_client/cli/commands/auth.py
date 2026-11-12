@@ -3,6 +3,7 @@
 """
 
 import json
+import os
 import time
 
 import typer
@@ -38,6 +39,9 @@ def login(
     • simple: 简化登录，手动指导
     """
     try:
+        # 显式登录才允许弹系统看图程序；探测类调用一律不弹，
+        # ndt 执行 quarkpan 时还会注入 QUARKPAN_QR_OPEN=0 压住这里。
+        os.environ.setdefault("QUARKPAN_QR_OPEN", "1")
         with get_client(auto_login=False) as client:
             # 检查当前登录状态
             if not force and client.is_logged_in():
